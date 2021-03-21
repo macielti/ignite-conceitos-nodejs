@@ -11,25 +11,31 @@ app.use(express.json());
 const users = [];
 
 function checksExistsUserAccount(request, response, next) {
-  const {username} = request.body;
+  const { username } = request.headers;
 
   const user = users.find((user) => username === user.username)
 
   if (user){
-    return response.status(400).json({error: "username already in use"})
+    request.user = user;
+    return next()
   } else {
-    response.user = user;
-    next()
+    return response.status(400).json({error: "username not exists"})
   } 
 }
 
-app.post('/users', checksExistsUserAccount, (request, response) => {
+app.post('/users', (request, response) => {
   const {username, name} = request.body;
+
+  const customerAlreadyExists = users.some((user) => user.username == username);
+
+  if (customerAlreadyExists){
+    return response.status(400).json({error: "username already in use"})
+  }
 
   const user = {
     id: uuidv4(),
-    name: name,
-    username: username,
+    name,
+    username,
     todos: []
   }
 
@@ -40,11 +46,26 @@ app.post('/users', checksExistsUserAccount, (request, response) => {
 });
 
 app.get('/todos', checksExistsUserAccount, (request, response) => {
-  // Complete aqui
+  const { user } = request;
+  const todos = user.todos;
+  return response.json(todos)
 });
 
 app.post('/todos', checksExistsUserAccount, (request, response) => {
-  // Complete aqui
+  const {title, deadline} = request.body;
+  const {user} = request;
+
+  const todo = {
+    id: uuidv4(),
+    title,
+    done: false,
+    deadline,
+    created_at: new Date()
+  }
+
+  user.todos.push(todo)
+
+  return response.status(201).json(todo)
 });
 
 app.put('/todos/:id', checksExistsUserAccount, (request, response) => {
